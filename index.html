@@ -1765,6 +1765,40 @@ Cut tree 是 consecutive ones 和 necklace 分离的基础数据结构。
                 if (e.key === 'Escape' && lightbox.classList.contains('show')) {
                     closeLightbox();
                 }
+
+                // Toggle browser fullscreen presentation mode with F key (ignore if typing inside input fields)
+                if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                        return;
+                    }
+                    e.preventDefault();
+
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen()
+                            .then(() => {
+                                // Collapse sidebar for presentation mode if it's currently open
+                                if (!layout.classList.contains('sidebar-collapsed')) {
+                                    layout.classList.add('sidebar-collapsed');
+                                    layout.dataset.autoCollapsed = 'true';
+                                }
+                            })
+                            .catch(err => {
+                                console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+                            });
+                    } else {
+                        document.exitFullscreen();
+                    }
+                }
+            });
+
+            // Restore sidebar status when exiting fullscreen
+            document.addEventListener('fullscreenchange', () => {
+                if (!document.fullscreenElement) {
+                    if (layout.dataset.autoCollapsed === 'true') {
+                        layout.classList.remove('sidebar-collapsed');
+                        delete layout.dataset.autoCollapsed;
+                    }
+                }
             });
         });
 
