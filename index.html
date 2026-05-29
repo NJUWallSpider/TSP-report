@@ -1,0 +1,1784 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concorde</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- MathJax Configuration & Loader -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            options: {
+                ignoreHtmlClass: 'tex2jax_ignore',
+                processHtmlClass: 'tex2jax_process'
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+    
+    <!-- Prism.js Default Theme -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css">
+    
+    <style>
+        /* CSS variables for light/dark mode */
+        :root {
+            --bg-page: #f4f4f5; /* Light zinc-gray */
+            --bg-surface: #ffffff;
+            --bg-sidebar: #fafafa;
+            --text-primary: #18181b; /* Near black zinc */
+            --text-secondary: #52525b; /* Dark zinc */
+            --text-muted: #a1a1aa;
+            --border-color: #e4e4e7;
+            --accent-primary: #3f3f46; /* Gray-zinc */
+            --accent-secondary: #71717a;
+            --accent-bg: #f4f4f5;
+            --code-bg: #fafafa;
+            --code-text: #18181b;
+            --table-header: #f4f4f5;
+            --table-row-even: #fcfcfc;
+            --toc-active: #09090b;
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: 'Fira Code', 'JetBrains Mono', monospace;
+        }
+
+        [data-theme="dark"] {
+            --bg-page: #09090b; /* Very dark zinc */
+            --bg-surface: #18181b; /* Dark zinc */
+            --bg-sidebar: #111113;
+            --text-primary: #f4f4f5;
+            --text-secondary: #a1a1aa;
+            --text-muted: #52525b;
+            --border-color: #27272a;
+            --accent-primary: #a1a1aa;
+            --accent-secondary: #71717a;
+            --accent-bg: #27272a;
+            --code-bg: #0d0d0f;
+            --code-text: #f4f4f5;
+            --table-header: #27272a;
+            --table-row-even: #141416;
+            --toc-active: #ffffff;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+        }
+
+        /* Basic resets */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-page);
+            color: var(--text-primary);
+            line-height: 1.75;
+            font-size: 16px;
+            display: flex;
+            min-height: 100vh;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        /* Layout structure */
+        #app-layout {
+            display: flex;
+            width: 100%;
+            position: relative;
+        }
+
+        /* Sidebar for Table of Contents */
+        #sidebar {
+            width: 320px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            overflow-y: auto;
+            padding: 2.5rem 1.75rem;
+            z-index: 100;
+            transition: background-color 0.2s, border-color 0.2s, transform 0.3s ease, width 0.3s ease;
+        }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar-header h2 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            margin-bottom: 0 !important;
+            font-weight: 700;
+        }
+
+        .sidebar-close-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .sidebar-close-btn:hover {
+            background-color: var(--accent-bg);
+            color: var(--text-primary);
+        }
+
+        .sidebar-toc {
+            list-style: none;
+        }
+
+        .sidebar-toc li {
+            margin-bottom: 0.4rem;
+        }
+
+        .sidebar-toc a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: all 0.15s;
+            display: block;
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-toc a:hover {
+            color: var(--text-primary);
+            background-color: var(--accent-bg);
+        }
+
+        .sidebar-toc li.depth-2 {
+            padding-left: 0rem;
+        }
+        
+        .sidebar-toc li.depth-3 {
+            padding-left: 1.25rem;
+            font-size: 0.95em;
+        }
+
+        .sidebar-toc a.active {
+            color: var(--toc-active);
+            font-weight: 600;
+            background-color: var(--accent-bg);
+        }
+
+        /* Main content container */
+        #main-content {
+            margin-left: 320px;
+            flex-grow: 1;
+            padding: 4rem 5rem;
+            display: flex;
+            justify-content: center;
+            min-width: 0;
+            background-color: var(--bg-surface);
+            transition: background-color 0.2s, margin-left 0.3s ease;
+        }
+
+        #content-inner {
+            max-width: 820px;
+            width: 100%;
+        }
+
+        /* Markdown Styles (minimalist & premium) */
+        .prose h1, .prose h2, .prose h3, .prose h4 {
+            color: var(--text-primary);
+            font-weight: 600;
+            line-height: 1.3;
+            margin-bottom: 1.25rem;
+            position: relative;
+        }
+
+        .prose h1 {
+            font-size: 2.25rem;
+            margin-top: 0;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+            letter-spacing: -0.02em;
+        }
+
+        .prose h2 {
+            font-size: 1.5rem;
+            margin-top: 3.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.4rem;
+            scroll-margin-top: 2rem;
+            letter-spacing: -0.01em;
+        }
+
+        .prose h3 {
+            font-size: 1.15rem;
+            margin-top: 2.5rem;
+            scroll-margin-top: 2rem;
+        }
+
+        .prose h4 {
+            font-size: 1.025rem;
+            margin-top: 2rem;
+            scroll-margin-top: 2rem;
+        }
+
+        .prose p {
+            margin-bottom: 1.5rem;
+            color: var(--text-secondary);
+            text-align: justify;
+        }
+
+        .prose a {
+            color: var(--text-primary);
+            text-decoration: underline;
+            text-underline-offset: 4px;
+            text-decoration-color: var(--text-muted);
+            font-weight: 500;
+            transition: color 0.15s, text-decoration-color 0.15s;
+        }
+
+        .prose a:hover {
+            color: var(--accent-primary);
+            text-decoration-color: var(--accent-primary);
+        }
+
+        /* Lists */
+        .prose ul, .prose ol {
+            margin-bottom: 1.5rem;
+            padding-left: 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        .prose li {
+            margin-bottom: 0.4rem;
+        }
+
+        .prose li p {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Code block wrapper and styling */
+        .code-container {
+            margin-bottom: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--table-header);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            font-family: var(--font-sans);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .copy-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            font-size: 0.7rem;
+            transition: all 0.15s;
+        }
+
+        .copy-btn:hover {
+            background-color: var(--bg-page);
+            color: var(--text-primary);
+        }
+
+        .prose pre {
+            background-color: var(--code-bg);
+            padding: 1.25rem;
+            overflow-x: auto;
+            margin: 0;
+        }
+
+        .prose pre code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--code-text);
+            background-color: transparent;
+            padding: 0;
+            border-radius: 0;
+            border: none;
+            line-height: 1.6;
+        }
+
+        .prose :not(pre) > code {
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            background-color: var(--accent-bg);
+            color: var(--text-primary);
+            padding: 0.15rem 0.35rem;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Quotes */
+        .prose blockquote {
+            border-left: 3px solid var(--accent-secondary);
+            padding-left: 1.25rem;
+            margin: 1.5rem 0;
+            font-style: italic;
+            color: var(--text-secondary);
+            background-color: var(--bg-sidebar);
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+            border-radius: 0 6px 6px 0;
+        }
+        
+        .prose blockquote p {
+            margin-bottom: 0;
+        }
+
+        /* Tables */
+        .prose table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            font-size: 0.875rem;
+            box-shadow: var(--shadow);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .prose th, .prose td {
+            border: 1px solid var(--border-color);
+            padding: 0.75rem 1rem;
+            text-align: left;
+        }
+
+        .prose th {
+            background-color: var(--table-header);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .prose tr:nth-child(even) {
+            background-color: var(--table-row-even);
+        }
+
+        /* Divider */
+        .prose hr {
+            border: 0;
+            border-top: 1px solid var(--border-color);
+            margin: 3rem 0;
+        }
+
+        /* Images styling */
+        .prose img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            margin: 2.5rem auto;
+            display: block;
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .prose img:hover {
+            transform: scale(1.01);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        /* Lightbox modal for image full-screen preview */
+        .lightbox {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(9, 9, 11, 0.9);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            cursor: zoom-out;
+        }
+
+        .lightbox.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .lightbox-content {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: scale(0.95);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: default;
+        }
+
+        .lightbox.show .lightbox-content {
+            transform: scale(1);
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            color: #ffffff;
+            font-size: 2.5rem;
+            font-weight: 300;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s, color 0.2s;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.1);
+            line-height: 1;
+        }
+
+        .lightbox-close:hover {
+            transform: scale(1.1);
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .prose img {
+            cursor: zoom-in;
+        }
+
+        /* Math alignment and overrides */
+        mjx-container[display="true"] {
+            margin: 1.5rem 0 !important;
+            padding: 1.25rem;
+            background-color: var(--bg-sidebar);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+            overflow-y: hidden;
+            display: block !important;
+        }
+
+        /* Toggle Theme & Back to Top Buttons */
+        .floating-controls {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            z-index: 1000;
+        }
+
+        .control-btn {
+            background-color: var(--bg-surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            background-color: var(--accent-bg);
+        }
+
+        .control-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        /* Sidebar Toggle */
+        #menu-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1001;
+            background-color: var(--bg-surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: all 0.2s;
+        }
+
+        /* Collapsed state styles for desktop */
+        .sidebar-collapsed #sidebar {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-collapsed #main-content {
+            margin-left: 0;
+        }
+
+        /* On desktop, show menu toggle only when sidebar is collapsed */
+        @media (min-width: 1025px) {
+            .sidebar-collapsed #menu-toggle {
+                display: flex;
+            }
+        }
+
+        /* Responsive styles */
+        @media (max-width: 1024px) {
+            #sidebar {
+                transform: translateX(-100%);
+            }
+
+            #sidebar.open {
+                transform: translateX(0);
+            }
+
+            #main-content {
+                margin-left: 0;
+                padding: 4rem 1.5rem 2rem;
+            }
+
+            #menu-toggle {
+                display: flex;
+            }
+        }
+        
+        /* Subtle animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .prose {
+            animation: fadeIn 0.4s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <button id="menu-toggle" aria-label="Toggle Menu">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path fill="none" d="M0 0h24v24H0z"/><path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z" fill="currentColor"/></svg>
+    </button>
+
+    <div id="app-layout">
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <h2>目录</h2>
+                <button id="sidebar-collapse-btn" class="sidebar-close-btn" title="折叠目录">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18"><path fill="none" d="M0 0h24v24H0z"/><path d="M10.828 12l4.95 4.95-1.414 1.414L8 12l6.364-6.364 1.414 1.414z" fill="currentColor"/></svg>
+                </button>
+            </div>
+            <ul class="sidebar-toc" id="toc-list">
+                <!-- Will be dynamically populated -->
+            </ul>
+        </aside>
+
+        <main id="main-content">
+            <div id="content-inner">
+                <article class="prose" id="rendered-content">
+                    <!-- Rendered content goes here -->
+                </article>
+            </div>
+        </main>
+    </div>
+
+    <div class="floating-controls">
+        <button class="control-btn" id="toc-toggle-btn" title="展开/折叠目录">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"><path fill="none" d="M0 0h24v24H0z"/><path d="M3 4h18v2H3V4zm4 7h14v2H7v-2zm0 7h14v2H7v-2zM3 10.5h2v3H3v-3zm0 7h2v3H3v-3z" fill="currentColor"/></svg>
+        </button>
+        <button class="control-btn" id="theme-btn" title="切换主题">
+            <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.393 5.393 0 0 1-4.4 2.61 5.433 5.433 0 0 1-5.34-6.4A8.991 8.991 0 0 0 12 3z"/></svg>
+        </button>
+        <button class="control-btn" id="top-btn" title="回到顶部" style="opacity: 0; pointer-events: none;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 7.828V20h-2V7.828l-5.364 5.364-1.414-1.414L12 4l7.778 7.778-1.414 1.414L13 7.828z"/></svg>
+        </button>
+    </div>
+
+    <div id="image-lightbox" class="lightbox" aria-hidden="true" style="display: none;">
+        <button class="lightbox-close" aria-label="关闭预览">&times;</button>
+        <img class="lightbox-content" src="" alt="">
+    </div>
+
+    <!-- Raw Markdown Script Template -->
+    <script type="text/markdown" id="markdown-raw">
+# Concorde 算法导引
+
+### 引子：天方夜谭与现实奇迹
+
+旅行商问题（TSP）是计算机科学中最为经典的 NP-hard 问题之一。在经典算法理论中，求解 TSP 的最著名精确算法是基于动态规划的 **Held-Karp 算法**。
+
+#### Held-Karp 算法（动态规划）
+
+设 $S \subseteq V$ 是已访问的城市集合，且起点 $0 \in S$。定义 $DP(S, i)$ 为从起点 $0$ 出发，遍历且仅遍历集合 $S$ 中的所有城市，最终到达城市 $i \in S$ 的最短路径长度。其状态转移方程为：
+$$
+DP(S, i) = \min_{j \in S \setminus \{i\}} \left\{ DP(S \setminus \{i\}, j) + c_{ji} \right\}
+$$
+该算法的时间复杂度为 $\mathcal{O}(n^2 2^n)$，空间复杂度为 $\mathcal{O}(n 2^n)$。
+
+#### 从 $2^{85900}$ 到 85,900：Concorde 的力量
+
+截至目前，**Concorde 成功求解过的最大 TSP 实例是包含 85,900 个节点的 PLA85900（集成电路芯片布线问题）**。
+
+如果我们用上述 $\mathcal{O}(n^2 2^n)$ 级别的精确动态规划算法来求解：
+- **基本操作数**：大约需要运行 $85900^2 \times 2^{85900} \approx 7.38 \times 10^9 \times 10^{25858} \approx 10^{25868}$ 次操作。
+- **所需时间**：假设使用每秒运算 $10^{18}$ 次（1 ExaFLOPS）的顶级超算，其耗时约为：
+   $$
+   \frac{10^{25868}}{10^{18} \times 3.15 \times 10^7} \approx 3.17 \times 10^{25842} \text{ 年}
+   $$
+   相比之下，宇宙的年龄仅为 $1.38 \times 10^{10}$ 年。也就是说，即便动用整个可观测宇宙的算力直至宇宙终结，也无法通过 Held-Karp 算法求解该问题。
+
+然而，**Concorde 求解器在 2004 年成功精确求解了 PLA85900 实例**，并给出了严格的全局最优证明！下图展示了该 85,900 节点芯片布线 TSP 问题的最优路径（tour）：
+
+![85,900 节点芯片布线 TSP 问题的最优路径 (tour)](tour.png)
+
+这一惊人成就的核心在于 Concorde 极其高效的 Branch-and-Cut 框架、丰富的切割平面算法以及极致优化的工程实现。本文将带你探索这一顶尖求解器背后的奥秘。
+
+---
+
+
+## 目录
+
+0. [阅读前置知识](#阅读前置知识)
+   - [推荐阅读路线](#推荐阅读路线)
+1. [整体框架：Branch-and-Cut](#1-整体框架branch-and-cut)
+2. [搜索树与节点状态机](#2-搜索树与节点状态机)
+3. [切割平面：分层分离架构](#3-切割平面分层分离架构)
+   - [3.1 子环消除不等式](#31-子环消除不等式)
+   - [3.2 Blossom 不等式](#32-blossom-不等式)
+   - [3.3 Comb 不等式](#33-comb-不等式)
+   - [3.4 Clique Tree 不等式](#34-clique-tree-不等式)
+   - [3.5 Double Decker / Star / Handling / Teething](#35-double-decker--star--handling--teething)
+   - [3.6 Consecutive Ones 不等式](#36-consecutive-ones-不等式)
+   - [3.7 Necklace 不等式](#37-necklace-不等式)
+   - [3.8 Domino Parity 不等式](#38-domino-parity-不等式)
+   - [3.9 局部切割分离 Local Cut](#39-局部切割分离-local-cut)
+4. [Tightening：切割强化](#4-tightening切割强化)
+5. [定价与边生成](#5-定价与边生成)
+6. [精确下界与边消除](#6-精确下界与边消除)
+7. [分支策略](#7-分支策略)
+8. [分布式计算](#8-分布式计算)
+9. [辅助算法](#9-辅助算法)
+
+---
+
+## 阅读前置知识
+
+Concorde 的精确求解器可以理解为把几个经典思想叠在一起：用启发式先找一个好 tour 作为**上界**，用 LP 松弛提供**下界**，用切割平面不断加强下界，用列生成避免一次性加入所有边，再用分支定界枚举剩余的不确定性。
+建议先记住下面这张词汇表：
+
+| 概念 | 初学者直觉 | 在 Concorde 中的角色 |
+|------|------------|----------------------|
+| Tour | 每个城市恰好进出一次的一条 Hamilton 回路 | 可行整数解，给出上界 |
+| LP 松弛 | 允许边变量取小数的“乐观版本” | 给出当前节点的下界 |
+| 切割平面 | 当前小数解违反、但所有合法 tour 都满足的不等式 | 加入 LP 后排除坏的小数解 |
+| 对偶变量 | LP 行约束的“价格” | 用来计算边的缩减成本和下界证明 |
+| 列生成/定价 | 只把有用的边变量加入 LP | 避免完整图的 $O(n^2)$ 列爆炸 |
+| 分支定界 | 把一个难问题拆成两个附加约束的子问题 | 当切割无法消除小数解时继续搜索 |
+| 精确下界 | 用有理数重新验证浮点 LP 的下界 | 保证最终最优性证明不受舍入误差破坏 |
+
+### 推荐阅读路线
+
+如果你是第一次读 Concorde，建议不要从高级切割家族开始。更顺的路径是：
+
+1. 先读第 1 章，理解“上界、下界、剪枝、切割循环、定价”如何组成一个完整求解流程。
+2. 再读第 3 章，建立 LP 中“列是边、行是度约束和切割”的数据模型。
+3. 接着读第 3.1 到 3.3 节，先掌握子环、Blossom、Comb 这三个最核心的切割直觉。
+4. 然后读第 6 章和第 7 章，理解为什么 Concorde 不把所有边一次性放进 LP，以及如何把浮点结果转成可靠证明。
+5. 最后读第 8 章，把前面所有机制放回搜索树中，看 Concorde 如何选择分支并推进求解。
+
+后面的 Double Decker、Clique Tree、Domino、Local Cut 等切割可以作为“增强层”理解：它们不是入门时必须先完全证明的对象，而是 Concorde 在基础切割已经不够强时继续压紧 LP 松弛的工具箱。
+
+---
+
+
+
+## 1. 整体框架：Branch-and-Cut
+
+下图展示了 Concorde 中 Branch-and-Cut 的整体计算流程：
+
+![Branch-and-Cut 整体框架流程图](branch-and-cut.png)
+
+### 1.1 TSP 的数学模型
+
+给定完全无向图 $G = (V, E)$，$|V| = n$，边权 $c_e \ge 0$ 。TSP 等价于以下整数规划：
+
+$$
+\begin{aligned}
+\min  \quad & \sum_{e \in E} c_e \cdot x_e\\
+
+\text{s.t.}  \quad & x(\delta(v)) = 2 \quad \forall v \in V \\
+      & x(\delta(S)) \ge 2 \quad \forall S \subset V,\ S \neq \emptyset,\ S \neq V \\
+      & x_e \in \{0, 1\} \quad \forall e \in E
+\end{aligned}
+$$
+
+其中 $x(\delta(S)) = \sum_{e \in \delta(S)} x_e$，$\delta(S)$ 是 $S$ 的割边集合（一个端点在 $S$ 内，另一个不在）。
+
+三个约束分别表达：
+
+- 每个城市必须有两条 tour 边相接，也就是一进一出。
+- 任意非空真子集 $S$ 不能和外界断开，否则会形成独立子环。
+- 每条边要么选，要么不选。
+
+若将整数约束松弛为：
+
+$$
+0 \le x_e \le 1
+$$
+
+就得到 TSP 的**标准 LP 松弛**。但这个松弛太弱：对 100 个城市的随机几何实例，LP 值通常只有 tour 长度的 70-80%。Concorde 的核心工作就是不断地在这个基础 LP 上添加**加强不等式**（切割平面），将多面体收紧到越来越接近 TSP 凸包。
+
+这里的“多面体”可以直观理解为所有满足当前线性约束的点的集合。真实 tour 的凸包很难完整写出；Concorde 做的是从一个较大的多面体开始，逐步加切割把不可能对应任何 tour 的小数点切掉。
+
+---
+
+Branch-and-Cut = Branch-and-Bound + Cutting Plane。Concorde 在每个搜索树节点上求一个 LP 松弛：如果这个松弛的最优值已经不小于当前最好 tour 的长度，那么这个节点不可能包含更优 tour，可以剪枝；如果 LP 解恰好是整数 tour，就得到一个新的上界；如果 LP 解还是小数，先尽量添加切割把它排除，实在排不掉再分支。
+
+这里有三个数贯穿全局：
+
+- **上界（upper bound）**：已经找到的最好 tour 长度。越小越好，通常由 Lin-Kernighan 启发式或整数 LP 解更新。
+- **下界（lower bound）**：当前节点中任何 tour 都不可能低于的值。越大越好，通常来自 LP 松弛和精确定价。
+- **gap**：上界和下界之间的差距。gap 越小，证明越接近完成。
+
+用公式表示剪枝条件：
+
+$$
+\text{lowerbound(node)} \ge \text{upperbound}
+$$
+
+这意味着：即使这个节点下面还有很多未枚举的 tour，它们也不可能比当前最好 tour 更短。
+
+### 高层流程
+
+```
+对于每个搜索树节点：
+  1. 加载/构建 LP 松弛 (tsp_lp.c)
+  2. 主切割循环 (control.c:CCtsp_cutting_loop)
+  3. 定价全边集 (generate.c)
+  4. 计算精确下界 (ex_price.c)
+  5. 边消除 (ex_price.c)
+  6. 如果下界 >= 上界 → 剪枝
+  7. 如果 x 是整数解 → 找到新 tour，更新上界
+  8. 否则 → 分支 (branch.c)，产生两个子节点
+  9. 选择下界最小的未处理节点，转到 1
+```
+
+### 为什么 LP 松弛能指导搜索
+
+TSP 的整数规划很难直接求解，但把 $x_e \in \{0,1\}$ 放宽为 $0 \le x_e \le 1$ 后，LP 可以快速给出一个“过于乐观”的解。这个解可能不是 tour，比如某些边取 $0.5$，但它有两个重要用途：
+
+1. LP 目标值是合法下界，因为放宽约束只会让最小化问题变得更容易。
+2. LP 解暴露了当前模型哪里太弱：如果出现子环、半整数 blossom、奇怪的 comb 结构，就说明需要对应的切割。
+
+Concorde 的主循环就是反复问同一个问题：当前 LP 解为什么还不是 tour？答案如果是“它违反了某类有效不等式”，就加切割；如果是“缺少某些有用边”，就定价加列；如果两者都解决不了，就分支。
+
+### 切割循环的三层结构
+
+```
+外层 (outside loop):
+  ├── 更新容差
+  ├── 中层 (LP 切割轮):
+  │     ├── 稀疏化 LP (qsparse.c)
+  │     ├── 按序调用所有切割分离器
+  │     ├── 添加切割到 LP，重新求解
+  │     ├── 稀疏边定价
+  │     └── 如果 LP 值有改进，重复
+  └── 全边定价 (full_edge_check)
+      如果定价发现新边，重新进入外层
+```
+
+---
+
+## 2. 搜索树与节点状态机
+
+### 先理解搜索树节点
+
+分支定界中的一个节点不是图上的城市节点，而是一个**子问题**。从根节点开始，Concorde 每次分支都会增加一个额外限制，例如“边 $(i,j)$ 必须选中”或“边 $(i,j)$ 禁止选中”。因此，搜索树越往下，子问题越具体，LP 下界通常也越高。
+
+一个节点需要保存三类信息：
+
+- 它在搜索树中的位置：父节点、两个子节点、深度。
+- 它当前已经证明到什么程度：是否还要切割、是否可以分支、是否已经剪枝。
+- 它的数值状态：当前下界、耗时、可能的试探性分支结果。
+
+### 节点状态转换
+
+```
+BB_NEEDS_CUTTING  ──→  BB_NEEDS_TENTATIVE_CUTTING  ──→  BB_NEEDS_BRANCHING
+       │                                                    │
+       └────←←←←←←←←← BB_NEEDS_TENTATIVE_BRANCHING ←←←←←───┘
+                                        │
+                                        ▼
+                                    BB_DONE
+```
+
+- **BB_NEEDS_CUTTING**：需要运行切割平面循环
+- **BB_NEEDS_TENTATIVE_CUTTING**：运行试探性切割（用更宽松的容差，快速评估分支方向）
+- **BB_NEEDS_BRANCHING**：LP 已充分优化，可以分支
+- **BB_DONE**：节点已处理完毕（剪枝或已分支）
+
+从教程角度看，状态机是在控制“这个节点还值得投入多少计算”。切割循环很贵，强分支也很贵，所以 Concorde 会先做较便宜的尝试：能剪枝就剪枝，能用轻量试探判断方向就先试探，只有必要时才进入完整分支。
+
+### 试探性分支（Tentative Branching）
+
+在正式分支前，先创建一个试探性子问题并快速求解，以评估分支方向的质量。
+
+直觉上，试探性分支是在问：“如果我朝这个方向分下去，两个孩子的下界会不会明显提高？”好的分支应该让两个孩子都变难或直接剪掉，而不是只把一个孩子变好、另一个孩子几乎不受影响。
+
+---
+
+## 3. 切割平面：分层分离架构
+
+### 先理解切割分离
+
+切割分离（separation）的输入是当前 LP 解 $x^\ast$，输出是若干条所有 tour 都满足、但 $x^\ast$ 违反的不等式。也就是说，分离器要解决的是：
+
+$$
+\text{find } a^\top x \le b \text{ such that } a^\top x^\ast > b
+$$
+
+如果找到这样的不等式，把它加入 LP 后，当前小数解就被排除；如果找不到，不代表当前解一定是 tour，只代表当前这一批分离器没找到能切掉它的约束。
+
+Concorde 采用分层架构，是因为不同切割的“强度”和“成本”差别很大。便宜切割先跑，能解决问题就不必调用昂贵分离器；只有 LP 进展停滞时，才调用更复杂的切割家族。
+
+切割分离器按**计算成本从低到高**排列：
+
+```
+文件切割 → 本地池 → 连通性 → 段收缩 → Fast Blossom
+→ GH Blossom → 远程池 → Block Comb → Greedy Comb
+→ PR Cliquetree → 精确子环 → Domino → 精确 Blossom
+→ Tighten → Double Decker → Star → Handling → Cliquetree
+→ Teething → (Tighten/Decker/Star/Handling/Teething Pool)
+→ Consecutive Ones → Necklace → Local Cut
+```
+
+每种分离器有"cheap check"：如果 LP 值在当前轮内已经有足够提升，跳过更昂贵的切割。每个切割家族都对 $x_e = 0$ 或 $x_e = 1$ 的边有特殊处理，利用 TSP 的图结构大幅缩小搜索空间。
+
+---
+
+### 3.1 子环消除不等式
+
+**数学形式**：对任意非空真子集 $S \subset V$：
+
+$$
+\sum_{i \in S,\ j \notin S} x_{ij} \ge 2
+$$
+
+含义：每个子图必须至少被访问和离开各一次，否则形成独立于剩余图的子环。
+
+这是最基础也最重要的 TSP 切割。度约束只能保证每个点有两条边相接，但不能阻止解变成多个彼此独立的小环。子环消除不等式说：任意一团城市 $S$ 都必须至少有两条边连到外面，否则 tour 无法把 $S$ 和其余城市接成一个整体。
+
+#### 连通性分离
+
+**算法**：计算 LP 解 $x$ 的支撑图（仅保留 $0 < x_e < 1$ 的边），求连通分量。每个连通分量 $S$ 若满足：
+
+$$
+\sum_{i \in S,\ j \notin S} x_{ij} < 2 - \epsilon
+$$
+
+则 $S$ 导出一个 violated 子环约束。
+
+**复杂度**：O(n + m)，一次 BFS/DFS。
+
+**实现**：从最小连通分量开始，合并后重新计算违规量，避免产生大量冗余约束。
+
+#### 段收缩分离
+
+**算法**：将图中连续的 $x_e = 1$（或非常接近 1）的路径收缩为单个超点，然后在收缩图上运行连通分量。收缩后 violated cut 展开回原图。
+
+**优势**：$x_e = 1$ 的边组成的长路径（tour 的确定性片段）非常常见，收缩后图的规模大幅缩小。
+
+#### 精确最小割分离
+
+**算法**：**Nagamochi-Ibaraki-Padberg-Rinaldi 收缩最小割**。构建以 $x_e$ 为边容量的图，求全局最小割。若最小割容量小于 2，存在 violated 子环约束。
+
+为什么最小割能分离子环？因为子环约束左边正是割容量：
+
+$$
+x(\delta(S)) = \sum_{e \in \delta(S)} x_e
+$$
+
+如果全局最小割都至少为 2，那么所有子环约束都满足；如果某个最小割小于 2，它对应的 $S$ 就是一条 violated subtour cut。
+
+
+#### Gomory-Hu 树
+
+GH 树存储了图中任意两点间的最小割。用于精确 blossom 分离。
+
+---
+
+### 3.2 Blossom 不等式
+
+**数学模型**：设 $H \subset V$ 且 $T_1,\ldots,T_k$ 是两两不相交的子集（$k \ge 3$ 为奇数），每个 $T_i$ 与 $H$ 至少有一条边：
+
+$$
+\sum_{e \in E(H)} x_e
++ \sum_{i=1}^{k} \sum_{e \in E(T_i)} x_e
+\le
+|H| + \sum_{i=1}^{k} (|T_i| - 1) + \left\lfloor \frac{k}{2} \right\rfloor
+$$
+
+等价于著名的 "2-matching 约束"：在由 $H$ 和所有 $T_i$ 诱导的子图中，不可能存在一个孤立的奇数次回路。
+
+Blossom 的直觉是“奇偶性”。某些 LP 解满足所有子环约束，却仍然把若干边以 $0.5$ 的方式绕成奇数结构。Blossom 不等式利用 tour 的偶度性质，排除这类半整数的奇环结构。
+
+#### Fast Blossom
+
+**算法**：在支撑图（$0 < x_e < 1$，忽略 epsilon 接近 0 或 1 的边）中，找连通分量。对每个分量，计数连接到该分量的 $x_e = 1$ 的边的数量——如果为奇数，该分量就是一个 violated blossom 的候选 handle。Teeth 由贪心选择违反量最大的边组成。
+
+#### Grötschel-Holland Fast Blossom
+
+**算法**：使用更大的 epsilon（$x_e \le 0.3$ 被忽略），构建连通分量。对每个分量，贪心选择 teeth，每个 tooth 是一条从分量边界出发的边集合。评估 blossom 不等式违规量。
+
+**关键区别**：GH 方法允许 teeth 重叠在边界节点上，而 Padberg-Rao 方法要求 teeth 两两不相交。
+
+#### 精确 Blossom
+
+**算法**：**Padberg-Rao 精确分离**。将 blossom 分离规约为图上的奇最短路径问题。
+
+构建一个辅助图，节点分裂为内外两部分。找 handle $H$ 和 $k$ 个牙 $T_1,\ldots,T_k$ 等价于在辅助图中找一条从特殊节点 $s$ 到 $t$ 的奇长度路径（经过奇数次牙）。
+
+使用 Gomory-Hu 树来高效计算节点对之间的最小割值。
+
+下图展示了 Blossom 不等式与 Comb 不等式所对应的经典冲突结构示意图：
+
+![Blossom 与 Comb 不等式结构示意图](Comb_and_blossom.png)
+
+---
+
+### 3.3 Comb 不等式
+
+**数学模型**：设 handle $H \subset V$ 和 $2k+1$ 个两两不相交的 teeth $T_1,\ldots,T_{2k+1}$，每个 $T_i$ 至少有一个节点在 $H$ 内和一个节点在 $H$ 外：
+
+$$
+\sum_{e \in E(H)} x_e
++ \sum_{i=1}^{2k+1} \sum_{e \in E(T_i)} x_e
+\le
+|H| + \sum_{i=1}^{2k+1} (|T_i| - 1) + k
+$$
+
+右手边公式：`CCtsp_COMBRHS(c) = 3 * cliquecount - 2`（对所有标准 comb 类型）。
+
+Comb 可以想成一个“把手 + 奇数颗牙”的结构。每颗牙都跨过 handle 的边界，合法 tour 经过这些牙时会受到奇偶限制；LP 小数解可以把这些限制平均化，从而看起来可行。Comb 不等式正是用奇数颗牙的组合结构把这种平均化解切掉。
+
+
+#### Block Comb
+
+**算法**：
+1. 将支撑图（$0 < x_e < 1$）分解为 **2-连通分量**（blocks）
+2. 跨割点的 comb 不可能是 violated 的（因为 cut node 的割性质），所以只搜索每个 block 内部
+3. 在每个 block 中，尝试构建 comb：选取一部分节点集合作为 handle，找从 handle 发出的"牙"
+4. 使用深度优先搜索枚举 handle 候选，检查违反量
+
+#### Greedy Comb Grower
+
+**算法**：构建**倒牙 comb**（inverted-tooth comb），即 teeth 只有 1 个节点。从一个种子边开始，贪心地扩展 handle 和添加 teeth：
+
+1. 选取 $x_e$ 接近 0.5 的边作为种子
+2. 将边的一个端点加入 handle，贪心添加更多节点
+3. 对每个不在 handle 的相邻节点，评估作为新 tooth 的 delta
+4. 选择最大化违反量 delta 的节点移动/添加
+5. 重复直到违反量不再改善
+
+
+---
+
+### 3.4 Clique Tree 不等式
+
+**数学模型**：clique tree 是 comb 不等式的推广。在 comb 中，所有 teeth 连接到同一个 handle。在 clique tree 中，handle 可以以树形结构连接，形成更复杂的超结构。
+
+如果说 comb 是“一根把手上长出奇数颗牙”，clique tree 就允许多个类似把手的结构按树形粘合。它捕捉的是更大范围的奇偶和连通性冲突，通常来自已有 comb 或 tight cut 的组合。
+
+
+#### PR Cliquetree 
+
+**算法**：基于 Puddu-Rinaldi 的方法。从现有的 LP 切割池中选取 violated 的 comb，尝试扩展为更大的 clique tree 结构。
+
+具体地，找两个 violated comb，如果它们共享一个 tooth，尝试将它们合并成一个 clique tree（两个 handle 通过共享 tooth 连接）。合并后检查新的不等式是否 violated。
+
+---
+
+### 3.5 Double Decker / Star / Handling / Teething
+
+这些都是从 comb 进一步推广的切割家族。它们都在尝试从已有 comb 或 clique 结构中挖掘更强的不等式。Concorde 先用相对便宜的分离器找到基础结构，再用这些过程做“变形、提升、补牙”，寻找能进一步提高 LP 下界的切割。
+
+#### Double Decker
+
+**理论**：两个 handle $H_1,H_2$ 被 teeth 多对多连接，形成"双层"结构。
+
+**实现** 从现有 comb 出发，尝试将 teeth 的某个子集提升为第二个 handle。检查提升后的不等式是否 violated。
+
+#### Star 不等式
+
+**理论**：double decker 的退化情况，其中 handle 以星形结构排列。
+
+**实现** 从 comb 出发，尝试将某些 teeth 转化为 handle。
+
+#### Handling
+
+**理论**：寻找 comb 中可以作为"把手"（handle）的特殊结构。
+
+**实现** 分析 comb 的图结构，找到可以充当 handle 的节点集。
+
+#### Teething
+
+**理论**：给定 handle，从支撑图中寻找可以作为"牙"的节点子集。
+
+**实现** 对给定的 handle clique，在支撑图中搜索 violated 的 tooth 候选。枚举 big teeth（大小 > 1）和小 teeth（单节点）。使用贪心策略选择违反量最大的 teeth 组合。
+
+
+---
+
+### 3.6 Consecutive Ones 不等式
+
+**理论**：如果 clique 的节点可以按顺序排列使得每个 clique 在序列中表现为连续的一段（即满足 consecutive ones property），则可以推导出更强的有效不等式。
+
+这里的核心不是欧几里得坐标上的“连续”，而是 cut tree 给出的组合顺序。若一组 tight cuts 可以被某种线性顺序解释，而新 clique 打破了这种顺序，就暴露出一个结构性冲突。PQ-tree 正是用来维护“所有可能顺序”的数据结构。
+
+**实现**：
+1. 提取当前 tight cuts 的 cut tree
+2. 对池中的每个 clique，检查其是否与 cut tree 中的剪支产生 "consecutive ones" 冲突
+3. 如果发现冲突，生成新的 violated 不等式：冲突 clique + 树中的剪支 = comb 类不等式
+
+---
+
+### 3.7 Necklace 不等式
+
+**理论**：necklace 是沿一条路径顺序排列的 clique 集合，形成"项链"结构。这是 cut tree 框架下的一种特殊 comb 推广。
+
+Necklace 可以看成 clique tree 中路径状结构的专门化。它沿着 cut tree 的一条链枚举候选，把局部连续的冲突串起来，形成比单个 comb 覆盖范围更大的不等式。
+
+**实现** ：
+1. 在 tight cut tree 中识别路径结构
+2. 枚举路径上的节点集作为候选 handle/necklace
+3. 使用枚举截断— 若路径太长，用启发式截断
+4. 对每个候选，贪心添加 teeth
+5. 评估所得不等式的违规量
+
+枚举有随机化，每次随机选择不同的起点。
+
+---
+
+### 3.8 Domino Parity 不等式
+
+**数学形式**：domino 包含两个相交但互不包含的 clique A 和 B。domino parity 不等式形如：
+
+$$
+x(E(A)) + x(E(B)) + x(E(A \cap B)) + x(E(A \cup B))
+\le
+|A| + |B| + |A \cap B| + |A \cup B| - 3
+$$
+
+这条公式的重点不是记住每一项，而是理解它在利用两个相交集合之间的奇偶关系。普通 cut 只看一个集合和外界之间的边；domino 同时看 $A$、$B$、交集和并集，因此能表达更细的 parity 约束。
+
+**实现**：
+1. 从 violated 子环约束出发，尝试将两个子环"配对"为 domino
+2. 如果可以收缩为更小的 violating 结构，则收缩
+3. 分布式版本（domboss/domgrunt）将 domino 分离分发到多台机器
+
+---
+
+### 3.9 局部切割分离 Local Cut
+
+这是 Concorde 相比普通 MIP 求解器最大的技术优势。
+
+**核心思想**：将大规模 TSP 的 LP 解投影到一个小型子问题上，使用精确 TSP 求解器作为"oracle"，在小规模多面体中精确分离任意违反的不等式，然后提升回原问题。
+
+普通切割分离通常只搜索某个已知家族，比如 subtour、comb 或 domino。Local Cut 的思路更激进：先截取一个足够小的局部图，然后在这个小图上几乎“完整理解”TSP 多面体。如果当前 LP 解在局部投影后不属于小图 tour 凸包，就可以通过分离超平面得到一条切割，再把它提升回大图。
+
+下图展示了 Local Cut（局部切割分离）的主要运行机制：
+
+![Local Cut 运行机制示意图](local_cut.png)
+
+#### 步骤详解
+
+**Step 1: Chunk 划分** 
+
+在 LP 解的支撑图（保留 $x_e > 0$ 的边）中，找到"chunks"——局部稠密子图。每个 chunk 包含不超过 `maxchunksize` 个节点。
+
+Chunk 划分策略：
+- `permute`：随机排列节点顺序，改变 chunk 的形状
+- `weighted`：按边权 $x_e$ 加权选择 chunk
+- `spheres`：以球体方式扩展 chunk
+- `dummy`：使用虚拟节点填充到目标大小
+- `uncivilized`：不使用任何优化
+- `noshrink`：不预先收缩 $x_e = 1$ 的边（通常应该收缩）
+
+**Step 2: Chunk 紧缩** 
+
+将 chunk 内的 LP 解投影到小图上：
+- 收缩 $x_e = 1$ 的边（`shrink_ones`）
+- 对收缩后的图，构建浓缩距离矩阵
+- 每个浓缩边的权 = 原 LP 解中对应边集的 $x_e$ 之和
+
+**Step 3: Oracle 求解**
+
+在浓缩 chunk 上运行**精确 TSP 求解器**，找到 chunk 上的最优 TSP tour（或证明一个下界）。
+
+如果最优 tour 的权重小于浓缩 LP 解的权重（即 $\sum x_e$ 在 chunk 内的投影），则发现了一个 violated 不等式——这个不等式就是"chunk 上所有 TSP tour 必须满足的加权和约束"。
+
+这一步实际上是求解一个可行性 LP：
+
+$$
+\begin{aligned}
+\text{是否存在 } & \lambda_j \ge 0 \\
+\text{使得 } & \sum_j \lambda_j = 1 \\
+& \sum_j \lambda_j x^j = x^\ast
+\end{aligned}
+$$
+
+其中 $x^j$ 是 chunk 上的 TSP tour 向量，$x^\ast$ 是当前 LP 解在 chunk 上的投影。
+
+如果不可行，则存在一个超平面分离 x* 和所有 tour 向量的凸包，这就是 violated 切割。
+
+**Step 4: 提升 Lifting** 
+
+将 chunk 内找到的切割不等式提升回原问题。提升分多步：
+1. `liberate_equality`：放松等号约束
+2. `liberate_fixed`：释放被固定的边变量
+3. `strengthen_edges`：通过边强化收紧不等式
+4. `strengthen_equality`：等号强化
+5. `strengthen_work`：一般性强化
+6. `decompose`：分解为更简单的表达式
+
+**Step 5: 故障处理** 
+
+如果 oracle 返回 infeasible 但验证后发现不等式在原问题上不成立（"fault"），则：
+- 用 `BLOCK_INTERIOR` 模式重新计算——阻塞 chunk 内部的所有节点，防止再次产生相同故障
+- 如果还是失败，递进到更大或更小的 chunk 大小
+
+#### Cut Tree 集成
+
+找到的局部切割先被添加到 tight cut tree中。Cut tree 存储了切割之间的包含/交叉关系，用于后续的 consecutive ones 和 necklace 分离。
+
+---
+
+## 4. Tightening：切割强化
+
+**目的**：给定一条已有切割和当前 LP 解 x，尝试通过局部调整（移动节点在 clique 之间的归属，或调整 clique 的组成）来增大违反量。
+
+### tightening 在做什么
+
+分离器找到的切割不一定是“最锋利”的。它可能已经违反当前 LP 解，但稍微移动某些节点、调整某些 clique 后，违反量还能更大。Tightening 就是对一条候选切割做局部搜索，尽量把它推到更贴近当前 LP 解的位置。
+
+如果把切割看成一把刀，分离器负责发现“这里可以切”，tightening 负责调整刀口角度，让同一类切割切得更深。它不改变切割家族的基本合法性，只是在合法范围内寻找更强的实例。
+
+
+
+### 算法
+
+将 tightening 建模为迭代局部搜索：
+
+**过程**：
+1. 将当前切割分解为 atoms（clique 间的最小独立单元）
+2. 对每个节点 v，计算将其从当前归属的 clique 集移动到其他 clique 的 delta
+3. 将最有希望的移动放入优先队列
+4. 反复执行最佳 delta 的移动，更新受影响节点的 delta
+5. 如果切割被"压紧"到 violated，写入输出
+
+这里的 `delta` 表示一次移动对违反量的边际影响。若当前切割写成：
+
+$$
+a^\top x \le b
+$$
+
+则违反量为：
+
+$$
+a^\top x^\ast - b
+$$
+
+tightening 希望通过改变切割的 clique 组成，让这个值变大，同时仍然保持这条不等式对所有 tour 有效。
+
+**Atoms 系统**：使用 union-find 树（`atomfind`）维护节点在 clique 之间的等价关系。"Atom" 是切割中不能被再分割的最小节点子集——它在所有 cliques 中的归属是相同的。
+
+---
+
+## 5. 定价与边生成
+
+**目的**：不在一开始将所有 O(n²) 条边加入 LP。通过 "价格" 机制（列生成），增量地添加有负缩减成本的边。
+
+### 先理解为什么需要定价
+
+完整 TSP 图有：
+
+$$
+|E| = \frac{n(n-1)}{2}
+$$
+
+条边。若 $n=10{,}000$，完整边数接近五千万，直接把所有边作为 LP 列会让内存和求解时间爆炸。Concorde 的做法是：先只放一小部分看起来有用的边，求 LP 后用对偶信息判断哪些缺失边可能改善目标，再把这些边加入。
+
+
+### 理论基础
+
+给定 LP 的对偶变量（节点势 $\pi_i$ 和切割势 $\sigma_k$），边 $(i,j)$ 的缩减成本为：
+
+$$
+rc_{ij}
+= c_{ij} - \pi_i - \pi_j
+- \sum_{k: (i,j) \in \operatorname{cut}_k} \sigma_k
+$$
+
+如果 $rc_{ij} < 0$，则该边有改善 LP 值的潜力，应加入 LP。
+
+直觉上，$c_{ij}$ 是边本身的长度；$\pi_i$、$\pi_j$ 和 $\sigma_k$ 是这条边帮助满足已有约束所获得的“抵扣”。如果抵扣后成本变成负数，说明当前 LP 因为缺少这条列而可能低估了真正最优值。列生成把这样的边加入后，重新求解 LP，让下界更可靠。
+
+
+### 边生成策略
+
+**(a) 几何实例**:
+
+当 `dg` 是几何距离时：
+1. 为每个节点 $i$，用当前节点对偶 $\pi$ 构造"修正坐标"
+2. 使用 kd-tree 或显式邻接表，找 $i$ 的最近邻（按 $c_{ij} - \pi_i - \pi_j$ 排序）
+3. 只检查前 k 个最近邻中 rc < 0 的边
+**(b) 稀疏图实例**:
+
+如果提供了 `fulladj`（全邻接表），按顺序扫描所有边。每轮返回最多 nwant 条 rc < 0 的边。
+
+**(c) 定价循环**:
+
+```c
+// 定价过程 (control.c):
+CCtsp_reset_edgegenerator(&eg, node_pi);
+do {
+    CCtsp_generate_edges(&eg, nwant, &ngot, elist, elen, &finished);
+    // 添加找到的边到 LP
+} while (!finished);
+```
+
+`finished` 标志保证在单组 $\pi$ 值下，每条可能的边至少被检查一次。
+
+**Cutoff 检查**：如果 $c_{ij} - \pi_i - \pi_j$ 已经为负（节点对偶部分），则跳过切割势的计算直接加入——这是一个便宜的预筛选。
+
+注意定价并不要求一次找出所有负缩减成本边。只要找到一批加入 LP，重新优化后对偶变量会变化，下一轮再继续找。这个“求解 LP → 查找负 rc 边 → 加列 → 再求解”的循环，就是 Concorde 处理巨大边集的关键。
+
+---
+
+## 6. 精确下界与边消除
+
+
+### 先理解浮点下界为什么还不够
+
+LP 求解器通常用浮点数工作。浮点结果足以指导搜索和找切割，但如果要声明“这个 tour 已经被证明最优”，就不能让舍入误差参与最终证明。一个极小的负缩减成本如果被误判为非负，理论上可能漏掉改善边；一个略微偏高的下界也可能导致错误剪枝。
+
+Concorde 因此把接近最终证明的关键步骤转成精确有理数计算。`BIGGUY` 提供的任意精度算术，让下界、缩减成本和边消除判断变成数学上可靠的陈述。
+
+### 精确对偶
+
+将 LP 对偶变量（浮点型 double）转换为**任意精度有理数**。这保证了计算出的下界是数学上严格成立的下界，不受浮点舍入影响。
+
+### 精确定价
+
+使用精确有理数计算完整图上的缩减成本下界：
+
+1. 取出精确对偶变量
+2. 对所有边 $(i,j)$，计算精确缩减成本：
+
+$$
+c_{ij} - \pi_i - \pi_j - \sum \text{cut\_contributions}
+$$
+
+3. 如果所有缩减成本 $\ge 0$，则当前 LP 值是最优的（在给定边集上）
+4. 如果有负缩减成本，最小缩减成本的边加入边集
+
+`phase1` 参数：设为 1 时执行 Farkas 引理定价——用于证明 LP 不可行。
+
+### 边消除
+
+基于精确下界和已知上界，安全地删除不可能在最优解中的边：
+
+$$
+\text{exact lowerbound} + rc_{ij} > \text{upperbound}
+$$
+
+若上式成立，则边 $e=(i,j)$ 可以被安全删除。直觉是：即使强制把这条边加入，所能达到的最好下界也已经超过当前最好 tour，所以最优 tour 不可能使用它。
+
+同样地，如果强制删除边 e 后下界超过上界，则 e **必须**在最优解中，可以被固定为 1。
+
+消除分为两轮：
+1. `eliminate_sparse=1`：在 `fulladj` 上快速过一遍
+2. `eliminate_sparse=0`：在完整距离矩阵上精确计算
+
+**精确下界的用途**：被消除的边从 `fulladj` 中移除，大幅缩小后续定价的搜索空间。
+
+---
+
+## 7. 分支策略
+
+### 先理解为什么还要分支
+
+理想情况下，切割循环会把 LP 解一路压到整数 tour。但实际中，某些节点上即使加了大量切割，LP 仍然是小数解。这时 Concorde 必须把问题拆开：选择一个小数结构，分别考虑它在最优 tour 中“成立”和“不成立”的两个世界。
+
+分支的好坏直接影响搜索树规模。一个差分支可能只让一个孩子下界略有提升，另一个孩子几乎和父节点一样难；一个好分支会让两个孩子的下界都显著上升，甚至直接剪枝。
+
+### 分支对象
+
+分支对象有两种类型：
+- **边分支**：强制 $x_e = 0$ 或 $x_e = 1$（ends[0] != -1）
+- **Clique 分支**：强制 $x(\delta(S)) = 2$ 或 $x(\delta(S)) \ge 4$
+
+### 强分支 (strong_branch)
+
+**原理**：对候选分支变量，实际求解两个子问题的 LP 松弛，选择下界上升最大的分支。
+
+Strong branching 的成本较高，因为它要临时求解多个候选的两个方向；但它能显著减少后续搜索树规模。Concorde 用候选筛选和试探性分支控制成本，只在最有希望的候选上做较深入评估。
+
+**候选边选择**：
+- 选择 $0.0 < x_e < 1.0$ 的边（分数边）
+- 按 $|x_e - 0.5|$ 排序，最接近 0.5 的优先
+- 限制候选数为 `TSP_BRANCH_STRONG_CHOICES_MULT * nwant` 个
+- 使用 "long edge" 启发式过滤极长边（若 `longedge_branching=0`）
+
+**候选 Clique 选择**：
+- 从切割池中选 $x(δ(S))$ 接近 2 或 4 的 clique
+- 优先选择违反程度高的
+
+**评估**：
+
+评价值公式为：
+
+$$
+\operatorname{score}(v_0, v_1)
+= \frac{100 \cdot \min(v_0, v_1) + \max(v_0, v_1)}{101}
+$$
+
+即主要考虑较小子问题的下界（偏向平衡的分支），同时加权较大的子问题。这里的 $v_0$ 和 $v_1$ 是两个分支方向求得的下界改善或评价值。
+
+**分支选择**：
+- 计算每个候选的 strong branching 评价值
+- 选取评价值最大的候选
+- 如果边分支和 clique 分支的质量接近，优先选择边分支（更简单）
+
+**求解子问题**：
+1. 应用分支约束到 LP（设置边 bound 或添加 clique 约束）
+2. 重新求解 LP（dual simplex with warm start）
+3. 如果需要，运行切割循环进一步收紧 LP
+4. 如果需要，运行精确定价确证下界
+
+### 试探性分支
+
+在正式分支前，创建试探性子节点快速评估。试探性子节点运行**简化版**切割循环（更宽松的容差，更少的切割种类）。试探性分支的评价值权重不同：
+
+$$
+\operatorname{tentative\_score}(v_0, v_1)
+= \frac{10 \cdot \min(v_0, v_1) + \max(v_0, v_1)}{11}
+$$
+
+试探性分支数量受 `tentative_branch_num` 控制（最大 50）。
+
+### 长边分支
+
+当 `longedge_branching=1` 时，`find_longedge_cliques2` 选择最长距离的边对应的 clique 作为分支目标。这在对特定类型实例（如几何 TSP）中可能更有效。
+
+### 分支执行
+
+对边分支：设置 `lp->graph.edges[e].fixed = 1` 或 `-1`，并修改 LP 变量的 bound。
+
+对 clique 分支：添加约束 $x(\delta(S)) \le 2$ 或 $x(\delta(S)) \ge 4$。
+
+对应数学形式为：
+
+$$
+\sum_{e \in \delta(S)} x_e \le 2
+$$
+
+或：
+
+$$
+\sum_{e \in \delta(S)} x_e \ge 4
+$$
+
+
+---
+
+## 8. 辅助算法
+
+这一章的模块不一定处在主 LP 循环里，但它们对 Concorde 的整体性能和可靠性很关键：启发式给上界，Held-Karp 给早期下界，精确算术给证明，切割池和 cut tree 让昂贵的结构可以复用。
+
+### Lin-Kernighan 启发式
+
+**算法**：Chained Lin-Kernighan。LK 通过迭代 k-opt 交换改进 tour。与标准 k-opt 不同，LK 动态决定每次迭代的 k 值：
+
+1. 顺序选择 $t_1,t_2,t_3,\ldots$，边交替删除和添加
+2. 每个选择基于"最佳增益"准则
+3. 当累积增益不再为正时停止
+4. 执行最佳的部分序列作为一次移动
+
+**Chaining**：在一次 LK 搜索收敛到局部最优后，执行"kick"——进行随机 4-opt 交换跳出局部最优，然后重新搜索。
+
+Kick 类型：
+- 纯随机 4-opt
+- 基于几何结构的 kick
+- 在近邻中 kick
+- 随机游走 kick
+
+LK 在此项目中有两个用途：
+1. **初始 tour**：为 branch-and-cut 提供初始上界
+2. **x-heuristic**：用 LP 解作为边选择偏好，在每轮切割循环后寻找更好的 tour
+
+### Held-Karp 下界
+
+
+**算法**：Held-Karp 松弛（1-tree 下界）。选择节点 1 作为特殊节点：
+
+1. 在 $V \backslash \{1\}$ 上计算最小生成树（MST）
+2. 添加连接节点 1 的两条最短边
+3. 通过拉格朗日乘子（节点势）迭代调整边权，最大化 1-tree 的下界
+
+**用途**：
+1. 提供初始下界
+2. 用于小规模实例的精确求解
+
+### 精确算术
+
+实现任意精度有理数运算。用于：
+- 精确 LP 对偶
+- 精确下界证明
+- 安全的边消除
+
+这是 Concorde 能声称 "provably optimal" 的关键组件——浮点舍入可能导致错误地"证明"最优性，精确算术避免了这个问题。
+
+### 切割老化
+
+**边老化**：长时间未被定价选中的边从 LP 中移除
+**切割老化**：连续多轮 slack 太大的切割被删除
+
+老化机制保持 LP 规模可控，不影响收敛性——老化的边和切割永远可以被重新生成。
+
+这也是 Concorde 和“把所有约束全部塞进 LP”的朴素实现之间的重要区别：精确求解并不要求当前 LP 永远保存所有曾经出现过的对象，只要求被删除的对象在需要时可以通过分离或定价重新发现。
+
+### 稀疏化
+
+将 LP 的 $x$ 向量压缩表示。当一条边 $e$ 的 $x_e$ 接近 0 或 1 时：
+- 多个 $x_e = 0$ 的边从稀疏表示中省略（等效于计数）
+- 多个 $x_e = 1$ 的边可以被收缩
+
+使用差分堆维护计数增量，比直接遍历所有边快得多。
+
+### Cut Tree
+
+存储 tight cuts 之间的包含/交叉关系。树节点类型：
+- 根
+- P 节点（parallel，子节点互不包含）
+- Q 节点（quotient，子节点线性有序）
+- 叶（一条切割）
+
+Cut tree 是 consecutive ones 和 necklace 分离的基础数据结构。
+
+    </script>
+
+    <!-- JS Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js"></script>
+
+    <script>
+        // Custom heading slug generator matching our markdown links
+        function getHeadingId(text) {
+            let slug = text.toLowerCase().trim();
+            if (slug.includes('辅助算法')) {
+                return '9-辅助算法';
+            }
+            slug = slug.replace(/[\.\:\：]/g, '');
+            slug = slug.replace(/\//g, ' ');
+            slug = slug.replace(/\s/g, '-');
+            return slug;
+        }
+
+        // Render logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const raw = document.getElementById('markdown-raw').textContent;
+            
+            // Protect structures
+            const placeholders = [];
+            function protect(text, regex, type) {
+                return text.replace(regex, (match) => {
+                    const id = `%%${type}_${placeholders.length}%%`;
+                    placeholders.push({ id, match });
+                    return id;
+                });
+            }
+
+            let content = raw;
+            // Protect math blocks (using names without underscores to prevent marked from parsing them as italic)
+            content = protect(content, /\$\$[\s\S]+?\$\$/g, 'BLOCKMATH');
+            content = protect(content, /\$[^\$\n]+?\$/g, 'INLINEMATH');
+
+            // Render Markdown structure (Marked.js)
+            let html = marked.parse(content);
+
+            // Restore math in reverse order
+            for (let i = placeholders.length - 1; i >= 0; i--) {
+                const item = placeholders[i];
+                if (item.id.includes('BLOCKMATH') || item.id.includes('INLINEMATH')) {
+                    html = html.replaceAll(item.id, item.match);
+                }
+            }
+
+            // Put into the page
+            const container = document.getElementById('rendered-content');
+            container.innerHTML = html;
+
+            // DOM Post-processing for code blocks
+            const preElements = container.querySelectorAll('pre');
+            preElements.forEach(pre => {
+                const codeElement = pre.querySelector('code');
+                if (!codeElement) return;
+
+                let lang = 'CODE';
+                const classList = codeElement.classList;
+                for (let i = 0; i < classList.length; i++) {
+                    if (classList[i].startsWith('language-')) {
+                        lang = classList[i].replace('language-', '').toUpperCase();
+                        break;
+                    }
+                }
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'code-container';
+
+                const header = document.createElement('div');
+                header.className = 'code-header';
+                header.innerHTML = `<span>${lang}</span><button class="copy-btn" onclick="copyCode(this)">Copy</button>`;
+
+                pre.parentNode.insertBefore(wrapper, pre);
+                wrapper.appendChild(header);
+                wrapper.appendChild(pre);
+            });
+
+            // Trigger MathJax typesetting if MathJax is loaded
+            if (window.MathJax && typeof window.MathJax.typeset === 'function') {
+                window.MathJax.typeset();
+            }
+
+            // Highlight syntax with Prism
+            Prism.highlightAllUnder(container);
+
+            // Customize headings to have the correct IDs
+            const headings = container.querySelectorAll('h1, h2, h3, h4');
+            headings.forEach(heading => {
+                const id = getHeadingId(heading.textContent);
+                heading.id = id;
+            });
+
+            // Populate Sidebar Table of Contents
+            const tocList = document.getElementById('toc-list');
+            const tocHeadings = container.querySelectorAll('h2, h3');
+            tocHeadings.forEach(heading => {
+                const li = document.createElement('li');
+                const depth = heading.tagName === 'H2' ? 'depth-2' : 'depth-3';
+                li.className = depth;
+
+                const a = document.createElement('a');
+                a.href = '#' + heading.id;
+                a.textContent = heading.textContent;
+                li.appendChild(a);
+                tocList.appendChild(li);
+            });
+
+            // Handle theme switching
+            const themeBtn = document.getElementById('theme-btn');
+            const themeIcon = document.getElementById('theme-icon');
+            
+            // Check system preference
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const savedTheme = localStorage.getItem('theme') || (prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+
+            themeBtn.addEventListener('click', () => {
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcon(newTheme);
+            });
+
+            function updateThemeIcon(theme) {
+                if (theme === 'dark') {
+                    // Sun icon
+                    themeIcon.innerHTML = `<path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-2a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 1h2v3h-2V1zm0 19h2v3h-2v-3zM3.515 4.929l1.414-1.414L7.05 5.636 5.636 7.05 3.515 4.93zM16.95 18.364l1.414-1.414 2.121 2.121-1.414 1.414-2.121-2.121zm2.121-14.85l1.414 1.414-2.121 2.121-1.414-1.414 2.121-2.121zM5.636 16.95l1.414 1.414-2.121 2.121-1.414-1.414 2.121-2.121zM23 11v2h-3v-2h3zM4 11v2H1v-2h3z"/>`;
+                } else {
+                    // Moon icon
+                    themeIcon.innerHTML = `<path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.393 5.393 0 0 1-4.4 2.61 5.433 5.433 0 0 1-5.34-6.4A8.991 8.991 0 0 0 12 3z"/>`;
+                }
+            }
+
+            // Scroll controls (back to top and sidebar highlighting)
+            const topBtn = document.getElementById('top-btn');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 300) {
+                    topBtn.style.opacity = '1';
+                    topBtn.style.pointerEvents = 'auto';
+                } else {
+                    topBtn.style.opacity = '0';
+                    topBtn.style.pointerEvents = 'none';
+                }
+
+                // Highlight active TOC item based on scroll position
+                let activeHeading = null;
+                const scrollPos = window.scrollY + 100;
+                
+                tocHeadings.forEach(heading => {
+                    if (heading.offsetTop < scrollPos) {
+                        activeHeading = heading;
+                    }
+                });
+
+                const tocLinks = tocList.querySelectorAll('a');
+                tocLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (activeHeading && link.getAttribute('href') === '#' + activeHeading.id) {
+                        link.classList.add('active');
+                    }
+                });
+            });
+
+            topBtn.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Mobile menu toggle & Sidebar collapse toggle
+            const menuToggle = document.getElementById('menu-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const layout = document.getElementById('app-layout');
+            const sidebarCollapseBtn = document.getElementById('sidebar-collapse-btn');
+            const tocToggleBtn = document.getElementById('toc-toggle-btn');
+
+            // Load collapsed state preference
+            const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+            if (isCollapsed) {
+                layout.classList.add('sidebar-collapsed');
+            }
+
+            // Collapse button inside sidebar
+            sidebarCollapseBtn.addEventListener('click', () => {
+                layout.classList.add('sidebar-collapsed');
+                localStorage.setItem('sidebar-collapsed', 'true');
+            });
+
+            // Toggle button in bottom-right / top-left menu toggle
+            function toggleSidebar() {
+                if (window.innerWidth <= 1024) {
+                    sidebar.classList.toggle('open');
+                } else {
+                    layout.classList.toggle('sidebar-collapsed');
+                    const currentlyCollapsed = layout.classList.contains('sidebar-collapsed');
+                    localStorage.setItem('sidebar-collapsed', currentlyCollapsed ? 'true' : 'false');
+                }
+            }
+
+            menuToggle.addEventListener('click', (e) => {
+                toggleSidebar();
+                e.stopPropagation();
+            });
+
+            tocToggleBtn.addEventListener('click', (e) => {
+                toggleSidebar();
+                e.stopPropagation();
+            });
+
+            document.addEventListener('click', (e) => {
+                if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== menuToggle && e.target !== tocToggleBtn) {
+                    sidebar.classList.remove('open');
+                }
+            });
+
+            // Lightbox dynamic event delegation & logic
+            const lightbox = document.getElementById('image-lightbox');
+            const lightboxImg = lightbox.querySelector('.lightbox-content');
+            const lightboxClose = lightbox.querySelector('.lightbox-close');
+
+            container.addEventListener('click', (e) => {
+                if (e.target.tagName === 'IMG') {
+                    lightboxImg.src = e.target.src;
+                    lightboxImg.alt = e.target.alt;
+                    lightbox.style.display = 'flex';
+                    // Force reflow
+                    lightbox.offsetHeight;
+                    lightbox.classList.add('show');
+                    lightbox.setAttribute('aria-hidden', 'false');
+                }
+            });
+
+            function closeLightbox() {
+                lightbox.classList.remove('show');
+                lightbox.setAttribute('aria-hidden', 'true');
+                setTimeout(() => {
+                    lightbox.style.display = 'none';
+                    lightboxImg.src = '';
+                }, 300);
+            }
+
+            lightbox.addEventListener('click', (e) => {
+                if (e.target !== lightboxImg) {
+                    closeLightbox();
+                }
+            });
+
+            lightboxClose.addEventListener('click', closeLightbox);
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && lightbox.classList.contains('show')) {
+                    closeLightbox();
+                }
+            });
+        });
+
+        // Copy code block helper
+        function copyCode(button) {
+            const container = button.closest('.code-container');
+            const code = container.querySelector('code').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                button.textContent = 'Copied!';
+                setTimeout(() => {
+                    button.textContent = 'Copy';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
